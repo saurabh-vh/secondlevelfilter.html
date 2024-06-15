@@ -1,0 +1,1301 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<meta name="viewport"
+		content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="apple-mobile-web-app-status-bar-style" content="black" />
+	<meta property="og:title" content="">
+	<meta property="og:image" content="preview.jpg">
+	<style type="text/css" title="Default">
+		html {
+			height: 100%;
+		}
+
+		body {
+			height: 100%;
+			margin: 0px;
+			overflow: hidden;
+			/* disable scrollbars */
+			background: #000000;
+		}
+	</style>
+
+</head>
+
+<body onload="initalState()">
+
+	<script>
+		let accentColor;
+		var evt;
+		var units;
+		let showAll = async () => { // Done changes here1
+			units = await JSON.parse(localStorage.getItem("polygonId"));// Done changes here1
+
+
+				await units.forEach((unit) => {// Done changes here1
+					obj.showOnePolyHotspot(unit);
+				})
+
+		}
+
+
+		let hideUnits = async (theUnits) => {
+			units =  await JSON.parse(localStorage.getItem("polygonId"));// Done changes here1
+			theUnits.forEach((unit) => {
+				obj.hideOnePolyHotspot(`${unit}`);
+			})
+		}
+
+		function initalState() {
+			showAll();
+			if (localStorage.getItem("navigateTo-Tower2")) {// Done changes here1
+				obj.setPan(localStorage.getItem("navigateTo-Tower2"));// Done changes here1
+
+			}
+			const data = {
+				loadComplete: true,
+				from: 'secondFilter'
+			}
+			parent.postMessage(JSON.stringify(data), "*");
+
+		}
+
+		let timeoutId;
+
+		const postMessage = (msg) => {
+			showAll();
+			if (localStorage.getItem("unitsToHide")) {
+				var hiddenUnits
+				hiddenUnits = localStorage.getItem("unitsToHide");
+				hideUnits(JSON.parse(hiddenUnits))
+				if (JSON.parse(hiddenUnits).find((el) => el.toString() == msg.toString())) return;
+			}
+			const data = {
+				level: 'secondFilter',
+				msg: msg
+			}
+			parent.postMessage(JSON.stringify(data), "*");
+			if (timeoutId) {
+				clearTimeout(timeoutId);
+			}
+			function togglePolyHotspot(msg) {
+				if (obj.showing) {
+					obj.hideOnePolyHotspot(msg);
+					obj.showing = false;
+				} else {
+					obj.showOnePolyHotspot(msg);
+					obj.showing = true;
+				}
+				timeoutId = setTimeout(() => togglePolyHotspot(msg), 500);
+			}
+			obj.showing = false;
+			togglePolyHotspot(msg);
+
+		}
+		var unitsToHide = [];
+		var evt;
+		if (localStorage.getItem("unitsToHide")) {
+			unitsToHide = JSON.parse(localStorage.getItem("unitsToHide"))
+		}
+
+		function hideUrlBar() {
+			// hide URL field on the iPhone/iPod touch
+			var p = String(navigator.platform);
+
+			container = document.getElementById("container");
+			if (p === 'iPad' || p === 'iPhone' || p === 'iPod touch') {
+				var v = (navigator.appVersion).match(/OS (\d+)_(\d+)_?(\d+)?/);
+				if (parseInt(v[1], 10) >= 7) {
+					// iOS >=7
+					if (container) {
+						container.style.top = (0) + "px";
+						container.style.left = (0) + "px";
+						container.style.width = (window.innerWidth) + "px";
+						container.style.height = (window.innerHeight) + "px";
+					}
+					if (obj) {
+						obj.setViewerSize(window.innerWidth, window.innerHeight);
+					}
+					window.scrollTo(0, 0);
+				} else {
+					if (container) {
+						var cheight;
+						switch (window.innerHeight) {
+							case 208: cheight = 268; break;
+							case 260: cheight = 320; break;
+							case 336: cheight = 396; break;
+							case 356: cheight = 416; break;
+							case 424: cheight = 484; break;
+							case 444: cheight = 504; break;
+							default: cheight = window.innerHeight;
+						}
+						if ((cheight) && ((container.offsetHeight != cheight) || (window.innerHeight != cheight))) {
+							container.style.height = cheight + "px";
+						}
+					}
+					document.getElementsByTagName("body")[0].style.marginTop = "1px";
+					window.scrollTo(0, 1);
+				}
+			}
+		}
+
+		function receiveMsg(e) {
+			if (e.origin === "https://localhost:3000" || "https://3d.virtualhomes.in/" || "https://localhost:3001") {
+				const data = JSON.parse(e.data)
+				if (data.msg === 'hideUnselectedUnits') {
+					showAll()
+					evt = e;
+					const units = data?.units
+					hideUnits(units);
+					accentColor = data.accentColor;
+					localStorage.setItem("unitsToHide", JSON.stringify(units))
+
+				}
+				else if (data.msg === 'loadingScreen') {
+					showAll();
+					data.totalUnits.forEach(unit => {
+						function convertHexTo0xFormat(hexColor) {
+							if (hexColor.startsWith("#")) {
+								hexColor = hexColor.slice(1);
+							}
+							return "0x" + hexColor;
+						}
+						let colorIn0xFormat = convertHexTo0xFormat(unit.color_code);
+						obj.changePolyHotspotColor(String(unit.id), colorIn0xFormat, 0.5, colorIn0xFormat, 1);
+						if (localStorage.getItem("unitsToHide")) {
+							const hiddenUnits = localStorage.getItem("unitsToHide");
+							hideUnits(JSON.parse(hiddenUnits))
+						}
+					});
+
+				} else if (data.msg === 'hideUnits') {
+					showAll();
+					const units = data?.selectedUnits
+					hideUnits(units);
+					localStorage.setItem("unitsToHide", JSON.stringify(units))
+				} else if (data.msg === 'clearLocalStorage') {
+					localStorage.removeItem("unitsToHide");
+					localStorage.removeItem("navigateTo-Tower2"); //Done changes here1
+
+				}
+				else if (data.msg === 'changeUnitToDefaultColor') {
+					if (timeoutId) {
+						clearTimeout(timeoutId);
+					}
+					showAll();
+					if (localStorage.getItem("unitsToHide")) {
+						const hiddenUnits = localStorage.getItem("unitsToHide");
+						hideUnits(JSON.parse(hiddenUnits))
+					}
+
+				}
+			}
+		}
+
+
+		if (window.addEventListener) {
+			window.addEventListener("load", hideUrlBar);
+			window.addEventListener("resize", hideUrlBar);
+			window.addEventListener("message", receiveMsg);
+			window.addEventListener("orientationchange", hideUrlBar);
+		}
+
+	</script>
+	<script type="text/javascript" src="object2vr_player.js?ts=28658805">
+	</script>
+	<div id="container" style="width:100%;height:100%;">
+		This content requires HTML5 &amp; Javascript.
+	</div>
+
+	<script>
+		let startX = 0;
+		let isDragging = false;
+
+		function navigateTower() {
+
+		}
+
+		let navigateTo;
+		let tilt = 0;
+		let fov = 0;
+		let speed = 20;
+		let x = 0;
+		let y = 0;
+
+		function moveToPositionBasedOnX(direction) {
+			//*****Use  obj.getX() funciton to get the current position *****//
+			console.log("getx", obj.getX(), "getpan", obj.getPan(), direction)
+			let navigateTo;
+			const xPosition = obj.getX();
+			const ranges = {
+				right: [
+					{ range: [19, 42], value: 156 },
+					{ range: [21, 44], value: 325 },
+					{ range: [44, 47], value: 156 },
+					{ range: [0, 19], value: 156 },
+				],
+				left: [
+					{ range: [19, 42], value: 325 },
+					{ range: [21, 44], value: 156 },
+					{ range: [0, 19], value: 325 },
+					{ range: [44, 47], value: 325 },
+					// { range: [42, 47], value: 319.19437751800245 },
+					// { range: [0, 6], value: 319.19437751800245 },
+					// { range: [6, 18], value: 46.88042782299261 }
+				]
+			};
+
+			ranges[direction].forEach(({ range, value }) => {
+				if (xPosition >= range[0] && xPosition <= range[1]) {
+					navigateTo = value;
+					localStorage.setItem("navigateTo-Tower2", navigateTo); //Done changes here1
+				}
+			});
+
+			if (navigateTo !== undefined) {
+				setTimeout(() => {
+					obj.addListener('positionchanged', () => {
+						// console.log("getx", obj.getX(), "getpan", obj.getPan(), direction)
+						obj.moveTo(navigateTo, tilt, fov, speed, x, y);
+					})
+				}, 1);
+			}
+		}
+
+		document.addEventListener('mousedown', function (event) {
+			startX = event.clientX;
+			isDragging = true;
+
+		});
+
+		document.addEventListener('mousemove', function (event) {
+			// if (isDragging) {
+			// 	const diffX = event.clientX - startX;
+			// 	if (Math.abs(diffX) > 1) {
+			// 		if (diffX > 0) {
+			// 			// Right swipe
+			// 			moveToPositionBasedOnX("right");
+			// 		} else {
+			// 			// Left swipe
+			// 			moveToPositionBasedOnX("left");
+			// 		}
+			// 	}
+			// }
+		});
+
+		document.addEventListener('mouseup', function (event) {
+			isDragging = true;
+			if (isDragging) {
+				const diffX = event.clientX - startX;
+				if (Math.abs(diffX) > 1) {
+					if (diffX > 0) {
+						// Right swipe
+						moveToPositionBasedOnX("right");
+					} else {
+						// Left swipe
+						moveToPositionBasedOnX("left");
+					}
+				}
+				isDragging = false;
+			}
+		});
+		document.addEventListener('touchstart', function (event) {
+			startX = event.touches[0].clientX;
+			isDragging = true;
+		});
+
+		document.addEventListener('touchmove', function (event) {
+			if (isDragging) {
+				const diffX = event.touches[0].clientX - startX;
+				if (Math.abs(diffX) > 1) {
+					if (diffX > 0) {
+						// Right swipe
+						moveToPositionBasedOnX("right");
+					} else {
+						// Left swipe
+						moveToPositionBasedOnX("left");
+					}
+				}
+			}
+		});
+
+		document.addEventListener('touchend', function (event) {
+			if (isDragging) {
+				const endX = event.changedTouches[0].clientX;
+				const diffX = endX - startX;
+				if (Math.abs(diffX) > 1) {
+					if (diffX > 0) {
+						// Right swipe
+						moveToPositionBasedOnX("right");
+					} else {
+						// Left swipe
+						moveToPositionBasedOnX("left");
+					}
+				}
+				isDragging = false;
+			}
+		});
+	</script>
+
+	<script type="text/javascript">
+		obj = new object2vrPlayer("container");
+		str = '<?xml version="1.0" encoding="UTF-8"?>';
+		str += '<vrobject>';
+		str += '  <input columns="48" fileextension="webp" hasalpha="0" height="2160" imagepath="images" levelbias="0.40000000596046448" levelmembmp="200" levelmemraw="300" levelqueuebmp="5" levelqueueraw="20" leveltilesize="510" leveltileurl="tiles/c%c_l%r_%y_%x.webp" overlap="1" preload="1" preview="4" rows="1" states="1" width="3840" windowheight="360" windowwidth="640">';
+		str += '    <level height="2160" preload="0" width="3840"/>';
+		str += '    <level height="1080" preload="0" width="1920"/>';
+		str += '    <level height="540" preload="0" width="960"/>';
+		str += '    <level height="270" preload="1" width="480"/>';
+		str += '  </input>';
+		str += '  <control automovemode="1" contextfullscreen="0" controller="1" dblclickfullscreen="0" hideabout="1" invertwheel="1" lockedkeyboard="0" lockedmouse="0" lockedwheel="0" revx="1" revy="1" sensitivity="10" simulatemass="1" speedwheel="1" swapxy="0" trapwheel="1" wrapx="1" wrapy="0"/>';
+		str += '  <view>';
+		str += '    <start column="43" row="0" state="0"/>';
+		str += '    <zoom centerx="0" centery="0" default="1" maxpixel="2" min="1"/>';
+		str += '    <limits panmax="360" panmin="0" tiltmax="90" tiltmin="0"/>';
+		str += '    <viewer background="1" backgroundcolor="0xffffff" imagescaling="2"/>';
+		str += '  </view>';
+		str += '  <autorotate delay="5" speed="1" start="0"/>';
+		str += '  <userdata author="" comment="" copyright="" datetime="" description="" info="" source="" title=""/>';
+		str += '  <qthotspots>';
+		str += '    <label background="1" backgroundalpha="1" backgroundcolor="0xffffff" border="1" borderalpha="1" bordercolor="0x000000" borderradius="1" enabled="1" height="20" textalpha="1" textcolor="0x000000" width="180" wordwrap="1"/>';
+		str += '  </qthotspots>';
+		str += '  <hotspots>';
+		str += '    <label background="1" backgroundalpha="1" backgroundcolor="0xffffff" border="1" borderalpha="1" bordercolor="0x000000" borderradius="1" enabled="1" height="20" textalpha="1" textcolor="0x000000" width="180" wordwrap="1"/>';
+		str += '    <polystyle backgroundalpha="0" backgroundcolor="" borderalpha="" bordercolor="" handcursor="1" mode="0"/>';
+
+
+
+
+
+
+
+			str += '    <polyhotspot description="" id="345" reuse="2" target="_self" title="3505" url="javascript: postMessage(`345`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.125463;0.452604,0.121759;0.452604,0.166667;0.401563,0.168519;0.401563,0.167593"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="335" reuse="0" target="_self" title="3405" url="javascript: postMessage(`335`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.168519;0.452604,0.166667;0.452604,0.188426;0.401563,0.189352;0.401563,0.185185"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="325" reuse="2" target="_self" title="3305" url="javascript: postMessage(`325`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.189352;0.452604,0.188426;0.452604,0.209722;0.401563,0.210648;0.401563,0.20463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="315" reuse="0" target="_self" title="3205" url="javascript: postMessage(`315`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.210648;0.452604,0.209722;0.452604,0.231944;0.401563,0.233333;0.401563,0.230556;0.401563,0.226389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="305" reuse="2" target="_self" title="3105" url="javascript: postMessage(`305`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.233333;0.452604,0.231944;0.452604,0.253704;0.401563,0.255556;0.401563,0.253241"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="295" reuse="2" target="_self" title="3005" url="javascript: postMessage(`295`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.255556;0.452604,0.253704;0.452604,0.275;0.401563,0.276852;0.401563,0.268981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="285" reuse="0" target="_self" title="2905" url="javascript: postMessage(`285`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.276852;0.452604,0.275;0.452604,0.29537;0.401563,0.298148;0.401563,0.293981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="275" reuse="2" target="_self" title="2805" url="javascript: postMessage(`275`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.298148;0.452604,0.29537;0.452604,0.318056;0.401563,0.319907;0.401563,0.312037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="265" reuse="2" target="_self" title="2705" url="javascript: postMessage(`265`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.319907;0.452604,0.318056;0.452604,0.340278;0.401563,0.34213;0.401563,0.333333"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="255" reuse="0" target="_self" title="2605" url="javascript: postMessage(`255`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.34213;0.452604,0.340278;0.452604,0.362037;0.401563,0.3625;0.401563,0.353704"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="245" reuse="2" target="_self" title="2505" url="javascript: postMessage(`245`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.3625;0.452604,0.362037;0.452604,0.383333;0.401563,0.384259;0.401563,0.376852"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="235" reuse="2" target="_self" title="2405" url="javascript: postMessage(`235`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.384259;0.452604,0.383333;0.452604,0.405093;0.401563,0.406019;0.401563,0.396296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="225" reuse="2" target="_self" title="2305" url="javascript: postMessage(`225`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.406019;0.452604,0.405093;0.452604,0.426389;0.401563,0.426852;0.401563,0.41713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="215" reuse="2" target="_self" title="2205" url="javascript: postMessage(`215`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.426852;0.452604,0.426389;0.452604,0.447685;0.401563,0.448148;0.401563,0.439352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot backgroundalpha="0.25098" backgroundcolor="0x0000ff" borderalpha="1" bordercolor="0x0000ff" description="" id="205" reuse="2" target="_self" title="2105" url="javascript: postMessage(`205`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.448148;0.452604,0.447685;0.452604,0.463889;0.406771,0.463889;0.401563,0.463889"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="185" reuse="4" target="_self" title="1905" url="javascript: postMessage(`185`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.515278;0.452604,0.515278;0.452604,0.536574;0.401563,0.536574"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="175" reuse="2" target="_self" title="1805" url="javascript: postMessage(`175`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.536574;0.452604,0.536574;0.452604,0.556019;0.401563,0.556481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="165" reuse="2" target="_self" title="1705" url="javascript: postMessage(`165`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.556481;0.452604,0.556019;0.452604,0.576852;0.401563,0.577315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="155" reuse="4" target="_self" title="1605" url="javascript: postMessage(`155`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.577315;0.452604,0.576852;0.452604,0.599537;0.401563,0.599074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="135" reuse="2" target="_self" title="1405" url="javascript: postMessage(`135`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.620833;0.452604,0.621296;0.452604,0.643519;0.401563,0.643056"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="145" reuse="4" target="_self" title="1505" url="javascript: postMessage(`145`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.599074;0.452604,0.599537;0.452604,0.621296;0.401563,0.620833"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot backgroundalpha="0.25098" backgroundcolor="0x0000ff" borderalpha="1" bordercolor="0x0000ff" description="" id="125" reuse="2" target="_self" title="1305" url="javascript: postMessage(`125`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.643056;0.452604,0.643519;0.452604,0.665278;0.401563,0.664815"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="115" reuse="2" target="_self" title="1205" url="javascript: postMessage(`115`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.664815;0.452604,0.665278;0.452604,0.6875;0.401563,0.6875"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="105" reuse="2" target="_self" title="1105" url="javascript: postMessage(`105`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.6875;0.452604,0.6875;0.452604,0.709722;0.401563,0.709259"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="85" reuse="2" target="_self" title="905" url="javascript: postMessage(`85`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.731019;0.452344,0.731944;0.452344,0.752778;0.401563,0.752778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="95" reuse="2" target="_self" title="1005" url="javascript: postMessage(`95`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.709259;0.452604,0.709722;0.452604,0.731944;0.401563,0.731019"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="75" reuse="2" target="_self" title="805" url="javascript: postMessage(`75`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.752778;0.452344,0.752778;0.452344,0.775;0.401563,0.774074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="65" reuse="4" target="_self" title="705" url="javascript: postMessage(`65`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.774074;0.452344,0.775;0.452344,0.789352;0.450781,0.791204;0.448438,0.79537;0.446094,0.796759;0.444792,0.796759;0.401563,0.795833"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="55" reuse="4" target="_self" title="605" url="javascript: postMessage(`55`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.795833;0.446094,0.796759;0.441146,0.808333;0.442708,0.814815;0.445573,0.818519;0.401563,0.81713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="45" reuse="0" target="_self" title="505" url="javascript: postMessage(`45`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.81713;0.445313,0.818519;0.445313,0.840278;0.401563,0.8375"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="35" reuse="2" target="_self" title="405" url="javascript: postMessage(`35`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.8375;0.445313,0.840278;0.445313,0.846296;0.442448,0.852778;0.440625,0.855093;0.440625,0.860648;0.401563,0.858796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="25" reuse="2" target="_self" title="305" url="javascript: postMessage(`25`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.858796;0.440625,0.860648;0.444792,0.866667;0.442187,0.872222;0.442708,0.877778;0.442708,0.881944;0.401563,0.87963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="15" reuse="4" target="_self" title="205" url="javascript: postMessage(`15`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.401563,0.87963;0.442708,0.881944;0.442708,0.904167;0.401563,0.901852"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot backgroundalpha="0.25098" backgroundcolor="0x0000ff" borderalpha="1" bordercolor="0x0000ff" description="" id="344" reuse="2" target="_self" title="3504" url="javascript: postMessage(`344`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.113889;0.496354,0.111574;0.496354,0.15463;0.461979,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="334" reuse="4" target="_self" title="3404" url="javascript: postMessage(`334`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.15463;0.496354,0.15463;0.496354,0.177315;0.461979,0.177315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="324" reuse="0" target="_self" title="3304" url="javascript: postMessage(`324`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.177315;0.496354,0.177315;0.496354,0.200463;0.461979,0.200463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="314" reuse="2" target="_self" title="3204" url="javascript: postMessage(`314`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.200463;0.496354,0.200463;0.496354,0.222222;0.461979,0.222222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="304" reuse="2" target="_self" title="3104" url="javascript: postMessage(`304`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.222222;0.496354,0.222222;0.496354,0.244907;0.461979,0.244907"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="294" reuse="2" target="_self" title="3004" url="javascript: postMessage(`294`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.244907;0.496354,0.244907;0.496354,0.268056;0.461979,0.268056"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="284" reuse="2" target="_self" title="2904" url="javascript: postMessage(`284`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.268056;0.496354,0.268056;0.496354,0.290741;0.461979,0.291204"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="274" reuse="0" target="_self" title="2804" url="javascript: postMessage(`274`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.291204;0.496354,0.290741;0.496354,0.312037;0.461979,0.312037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="254" reuse="0" target="_self" title="2604" url="javascript: postMessage(`254`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.335648;0.496354,0.335185;0.496354,0.358333;0.461979,0.358333"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="264" reuse="2" target="_self" title="2704" url="javascript: postMessage(`264`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.312037;0.496354,0.312037;0.496354,0.335185;0.461979,0.335648"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="244" reuse="4" target="_self" title="2504" url="javascript: postMessage(`244`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.358333;0.496354,0.358333;0.496354,0.380093;0.461979,0.37963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="234" reuse="2" target="_self" title="2404" url="javascript: postMessage(`234`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.37963;0.496354,0.380093;0.496354,0.401389;0.461979,0.402778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="224" reuse="2" target="_self" title="2304" url="javascript: postMessage(`224`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.402778;0.496354,0.401389;0.496354,0.425;0.461979,0.425463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="214" reuse="2" target="_self" title="2204" url="javascript: postMessage(`214`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.425463;0.496354,0.425;0.496354,0.448148;0.461979,0.448148"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="204" reuse="2" target="_self" title="2104" url="javascript: postMessage(`204`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.448148;0.496354,0.448148;0.496354,0.462963;0.478385,0.462963;0.461979,0.463426"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="184" reuse="4" target="_self" title="1904" url="javascript: postMessage(`184`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.515741;0.496875,0.516204;0.496875,0.5375;0.473698,0.537037;0.461979,0.537037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="174" reuse="2" target="_self" title="1804" url="javascript: postMessage(`174`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.537037;0.496875,0.5375;0.496875,0.558333;0.461979,0.55787"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="164" reuse="2" target="_self" title="1704" url="javascript: postMessage(`164`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.55787;0.496875,0.558333;0.496875,0.581019;0.461979,0.580093"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="154" reuse="2" target="_self" title="1604" url="javascript: postMessage(`154`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.580093;0.496875,0.581019;0.496875,0.603241;0.461979,0.602778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="144" reuse="2" target="_self" title="1504" url="javascript: postMessage(`144`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.602778;0.496875,0.603241;0.496875,0.625926;0.461979,0.625463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="134" reuse="4" target="_self" title="1404" url="javascript: postMessage(`134`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.625463;0.496875,0.625926;0.496875,0.648611;0.461979,0.648611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="124" reuse="4" target="_self" title="1304" url="javascript: postMessage(`124`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.648611;0.496875,0.648611;0.496875,0.670833;0.461979,0.670833"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="114" reuse="2" target="_self" title="1204" url="javascript: postMessage(`114`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.670833;0.496875,0.670833;0.496875,0.693056;0.461979,0.693056"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="104" reuse="4" target="_self" title="1104" url="javascript: postMessage(`104`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.693056;0.496875,0.693056;0.496875,0.715741;0.461979,0.715741"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="94" reuse="4" target="_self" title="1004" url="javascript: postMessage(`94`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.715741;0.496875,0.715741;0.496875,0.737963;0.461979,0.737963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="84" reuse="4" target="_self" title="904" url="javascript: postMessage(`84`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.461979,0.737963;0.496875,0.737963;0.496875,0.759259;0.461979,0.759722"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="343" reuse="2" target="_self" title="3503" url="javascript: postMessage(`343`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.111574;0.530469,0.109722;0.530469,0.15463;0.496354,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="333" reuse="2" target="_self" title="3403" url="javascript: postMessage(`333`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.15463;0.530469,0.15463;0.530469,0.177315;0.496354,0.177315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="323" reuse="2" target="_self" title="3303" url="javascript: postMessage(`323`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.177315;0.530469,0.177315;0.530469,0.199537;0.496354,0.200463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="313" reuse="2" target="_self" title="3203" url="javascript: postMessage(`313`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.200463;0.530469,0.199537;0.530469,0.221759;0.496354,0.222222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="303" reuse="4" target="_self" title="3103" url="javascript: postMessage(`303`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.222222;0.530469,0.221759;0.530469,0.244444;0.496354,0.244907"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="293" reuse="2" target="_self" title="3003" url="javascript: postMessage(`293`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.244907;0.530469,0.244444;0.530469,0.26713;0.496354,0.268056"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="283" reuse="2" target="_self" title="2903" url="javascript: postMessage(`283`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.268056;0.530469,0.26713;0.530469,0.289352;0.496354,0.290741"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="273" reuse="2" target="_self" title="2803" url="javascript: postMessage(`273`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.290741;0.530469,0.289352;0.530469,0.311574;0.496354,0.312037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="263" reuse="2" target="_self" title="2703" url="javascript: postMessage(`263`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.312037;0.530469,0.311574;0.530469,0.335185;0.496354,0.335185"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="253" reuse="4" target="_self" title="2603" url="javascript: postMessage(`253`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.335185;0.530469,0.335185;0.530469,0.358333;0.496354,0.358333"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="243" reuse="4" target="_self" title="2503" url="javascript: postMessage(`243`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.358333;0.530469,0.358333;0.530469,0.37963;0.496354,0.380093"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="233" reuse="4" target="_self" title="2403" url="javascript: postMessage(`233`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.380093;0.530469,0.37963;0.530469,0.401852;0.496354,0.401389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="223" reuse="4" target="_self" title="2303" url="javascript: postMessage(`223`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.401389;0.530469,0.401852;0.530469,0.424537;0.496354,0.425"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="213" reuse="4" target="_self" title="2203" url="javascript: postMessage(`213`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.425;0.530469,0.424537;0.530469,0.447222;0.496354,0.448148"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="203" reuse="4" target="_self" title="2103" url="javascript: postMessage(`203`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496354,0.448148;0.530469,0.447222;0.530469,0.4625;0.496354,0.462963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="183" reuse="2" target="_self" title="1903" url="javascript: postMessage(`183`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.516204;0.530469,0.516204;0.530469,0.537037;0.51276,0.537037;0.496875,0.5375"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="173" reuse="2" target="_self" title="1803" url="javascript: postMessage(`173`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.5375;0.530469,0.537037;0.530469,0.558796;0.516406,0.558796;0.510156,0.558796;0.496875,0.558333"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="163" reuse="2" target="_self" title="1703" url="javascript: postMessage(`163`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.558333;0.530469,0.558796;0.530469,0.581481;0.496875,0.581019"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="153" reuse="4" target="_self" title="1603" url="javascript: postMessage(`153`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.581019;0.530469,0.581481;0.530469,0.604167;0.496875,0.603241"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="143" reuse="4" target="_self" title="1503" url="javascript: postMessage(`143`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.603241;0.530469,0.604167;0.530469,0.627315;0.496875,0.625926"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="133" reuse="2" target="_self" title="1403" url="javascript: postMessage(`133`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.625926;0.530469,0.627315;0.530469,0.649074;0.496875,0.648611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="123" reuse="4" target="_self" title="1303" url="javascript: postMessage(`123`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.648611;0.530469,0.649074;0.530469,0.671296;0.496875,0.670833"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="113" reuse="0" target="_self" title="1203" url="javascript: postMessage(`113`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.670833;0.530469,0.671296;0.530469,0.693981;0.496875,0.693056"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="103" reuse="4" target="_self" title="1103" url="javascript: postMessage(`103`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.693056;0.530469,0.693981;0.530469,0.71713;0.496875,0.715741"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="93" reuse="0" target="_self" title="1003" url="javascript: postMessage(`93`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.715741;0.530469,0.71713;0.530469,0.739352;0.496875,0.737963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="83" reuse="2" target="_self" title="903" url="javascript: postMessage(`83`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.496875,0.737963;0.530469,0.739352;0.530469,0.761111;0.496875,0.759259"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot backgroundalpha="0.25098" backgroundcolor="0x0000ff" borderalpha="1" bordercolor="0x0000ff" description="" id="342" reuse="2" target="_self" title="3502" url="javascript: postMessage(`342`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.109722;0.564844,0.109259;0.564844,0.15463;0.530469,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="332" reuse="4" target="_self" title="3402" url="javascript: postMessage(`332`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.15463;0.564844,0.15463;0.564844,0.177315;0.530469,0.177778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="322" reuse="2" target="_self" title="3302" url="javascript: postMessage(`322`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.177778;0.564844,0.177315;0.564844,0.199074;0.530469,0.199537"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="312" reuse="2" target="_self" title="3202" url="javascript: postMessage(`312`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.199537;0.564844,0.199074;0.565104,0.221759;0.530469,0.221759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="302" reuse="2" target="_self" title="3102" url="javascript: postMessage(`302`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.221759;0.565104,0.221759;0.565365,0.244444;0.530469,0.244444"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="292" reuse="4" target="_self" title="3002" url="javascript: postMessage(`292`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.244444;0.565365,0.244444;0.565625,0.266667;0.530469,0.26713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="282" reuse="4" target="_self" title="2902" url="javascript: postMessage(`282`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.26713;0.565365,0.266667;0.565365,0.288889;0.530469,0.289352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="272" reuse="4" target="_self" title="2802" url="javascript: postMessage(`272`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.289352;0.565365,0.288889;0.565625,0.311111;0.530469,0.311574"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="262" reuse="4" target="_self" title="2702" url="javascript: postMessage(`262`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.311574;0.565625,0.311111;0.565625,0.335185;0.530469,0.335185"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="252" reuse="4" target="_self" title="2602" url="javascript: postMessage(`252`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.335185;0.565625,0.335185;0.565365,0.356944;0.530469,0.358333"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="242" reuse="4" target="_self" title="2502" url="javascript: postMessage(`242`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.358333;0.565365,0.356944;0.565365,0.380093;0.530469,0.37963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="232" reuse="4" target="_self" title="2402" url="javascript: postMessage(`232`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.37963;0.565365,0.380093;0.565365,0.402315;0.530469,0.401852"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="222" reuse="4" target="_self" title="2302" url="javascript: postMessage(`222`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.401852;0.565365,0.402315;0.565365,0.424074;0.530469,0.424537"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="212" reuse="2" target="_self" title="2202" url="javascript: postMessage(`212`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.424537;0.565365,0.424074;0.565365,0.447222;0.530469,0.447222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="202" reuse="2" target="_self" title="2102" url="javascript: postMessage(`202`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.447222;0.565365,0.447222;0.565365,0.463426;0.530469,0.4625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="182" reuse="2" target="_self" title="1902" url="javascript: postMessage(`182`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.516204;0.565104,0.515741;0.565365,0.537037;0.530469,0.537037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="172" reuse="2" target="_self" title="1802" url="javascript: postMessage(`172`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.537037;0.565365,0.537037;0.565365,0.558796;0.530469,0.558796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="162" reuse="2" target="_self" title="1702" url="javascript: postMessage(`162`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.558796;0.565365,0.558796;0.565365,0.581944;0.530469,0.581481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="152" reuse="2" target="_self" title="1602" url="javascript: postMessage(`152`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.581481;0.565365,0.581944;0.565365,0.60463;0.530469,0.604167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="142" reuse="2" target="_self" title="1502" url="javascript: postMessage(`142`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.604167;0.565365,0.60463;0.565365,0.627778;0.530469,0.627315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="132" reuse="2" target="_self" title="1402" url="javascript: postMessage(`132`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.627315;0.565365,0.627778;0.565365,0.65;0.530469,0.649074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="122" reuse="2" target="_self" title="1302" url="javascript: postMessage(`122`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.649074;0.565365,0.65;0.565365,0.672222;0.530469,0.671296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="112" reuse="4" target="_self" title="1202" url="javascript: postMessage(`112`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.671296;0.565365,0.672222;0.565365,0.694907;0.530469,0.693981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="102" reuse="2" target="_self" title="1102" url="javascript: postMessage(`102`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.693981;0.565365,0.694907;0.565365,0.71713;0.530469,0.71713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="92" reuse="2" target="_self" title="1002" url="javascript: postMessage(`92`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.71713;0.565365,0.71713;0.565365,0.739815;0.530469,0.739352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="82" reuse="2" target="_self" title="902" url="javascript: postMessage(`82`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.530469,0.739352;0.565365,0.739815;0.565365,0.761574;0.530469,0.761111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="341" reuse="2" target="_self" title="3501" url="javascript: postMessage(`341`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.564844,0.109259;0.614323,0.10787;0.614583,0.152315;0.564844,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="331" reuse="4" target="_self" title="3401" url="javascript: postMessage(`331`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.564844,0.15463;0.614583,0.152315;0.614583,0.175;0.564844,0.177315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="321" reuse="4" target="_self" title="3301" url="javascript: postMessage(`321`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.564844,0.177315;0.614583,0.175;0.614583,0.196759;0.564844,0.199074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="311" reuse="2" target="_self" title="3201" url="javascript: postMessage(`311`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.564844,0.199074;0.614583,0.196759;0.614583,0.219907;0.565104,0.221759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="301" reuse="2" target="_self" title="3101" url="javascript: postMessage(`301`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565104,0.221759;0.614583,0.219907;0.614583,0.243056;0.565365,0.244444"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="291" reuse="2" target="_self" title="3001" url="javascript: postMessage(`291`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.244444;0.614583,0.243056;0.614844,0.265741;0.565625,0.26713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="281" reuse="4" target="_self" title="2901" url="javascript: postMessage(`281`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.26713;0.614583,0.265741;0.614583,0.288426;0.565365,0.289352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="271" reuse="2" target="_self" title="2801" url="javascript: postMessage(`271`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.289352;0.614583,0.288889;0.614583,0.310185;0.565625,0.311111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="261" reuse="2" target="_self" title="2701" url="javascript: postMessage(`261`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565625,0.311111;0.614583,0.310185;0.614583,0.33287;0.565625,0.335185"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="251" reuse="4" target="_self" title="2601" url="javascript: postMessage(`251`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565625,0.335185;0.614583,0.33287;0.614583,0.355556;0.565365,0.356944"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="241" reuse="4" target="_self" title="2501" url="javascript: postMessage(`241`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.356944;0.574479,0.356944;0.575521,0.356944;0.614583,0.355556;0.614583,0.378704;0.565365,0.380093"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="231" reuse="4" target="_self" title="2401" url="javascript: postMessage(`231`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.380093;0.573958,0.380093;0.576042,0.37963;0.614583,0.379167;0.614844,0.400926;0.565365,0.402315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="221" reuse="4" target="_self" title="2301" url="javascript: postMessage(`221`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.402315;0.614583,0.400926;0.614583,0.423611;0.565365,0.424074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="211" reuse="4" target="_self" title="2201" url="javascript: postMessage(`211`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.424074;0.614583,0.423611;0.614583,0.445833;0.565365,0.447222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="201" reuse="4" target="_self" title="2101" url="javascript: postMessage(`201`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.447222;0.614583,0.445833;0.614583,0.4625;0.565365,0.463426"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="181" reuse="4" target="_self" title="1901" url="javascript: postMessage(`181`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565104,0.515741;0.614583,0.516204;0.614583,0.537037;0.565365,0.537037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="171" reuse="4" target="_self" title="1801" url="javascript: postMessage(`171`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.537037;0.614583,0.537037;0.614583,0.560185;0.565365,0.558796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="161" reuse="4" target="_self" title="1701" url="javascript: postMessage(`161`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.558796;0.614583,0.560185;0.614583,0.582407;0.565365,0.581944"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="151" reuse="4" target="_self" title="1601" url="javascript: postMessage(`151`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.581944;0.614583,0.582407;0.614583,0.605093;0.565365,0.60463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="141" reuse="4" target="_self" title="1501" url="javascript: postMessage(`141`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.60463;0.614583,0.605093;0.614583,0.627778;0.565365,0.627778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="131" reuse="4" target="_self" title="1401" url="javascript: postMessage(`131`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.627778;0.614583,0.627778;0.614583,0.650926;0.565365,0.65"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="121" reuse="4" target="_self" title="1301" url="javascript: postMessage(`121`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.65;0.583594,0.650463;0.614583,0.650926;0.614583,0.673148;0.565365,0.672222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="111" reuse="4" target="_self" title="1201" url="javascript: postMessage(`111`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.672222;0.583594,0.672685;0.614583,0.673148;0.614583,0.69537;0.565365,0.694907"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="101" reuse="4" target="_self" title="1101" url="javascript: postMessage(`101`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.694907;0.582812,0.694907;0.614583,0.69537;0.614583,0.718056;0.565365,0.71713"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="91" reuse="2" target="_self" title="1001" url="javascript: postMessage(`91`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.71713;0.584115,0.717593;0.614583,0.718056;0.614583,0.741204;0.565365,0.739815"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="81" reuse="2" target="_self" title="901" url="javascript: postMessage(`81`)">';
+			str += '      <polygon column="43" row="0" state="0" vertices="0.565365,0.739815;0.583073,0.740278;0.614583,0.741204;0.614583,0.7625;0.565365,0.761574"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="350" reuse="4" target="_self" title="3510" url="javascript: postMessage(`350`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.10787;0.448698,0.10787;0.448698,0.15463;0.40026,0.154167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="340" reuse="4" target="_self" title="3410" url="javascript: postMessage(`340`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.154167;0.448698,0.15463;0.448698,0.177315;0.40026,0.176852"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="330" reuse="4" target="_self" title="3310" url="javascript: postMessage(`330`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.176852;0.448698,0.177315;0.448698,0.2;0.40026,0.198611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="320" reuse="4" target="_self" title="3210" url="javascript: postMessage(`320`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.198611;0.448698,0.2;0.448698,0.222222;0.40026,0.221759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="310" reuse="4" target="_self" title="3110" url="javascript: postMessage(`310`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.221759;0.448698,0.222222;0.448698,0.244907;0.40026,0.243981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="300" reuse="4" target="_self" title="3010" url="javascript: postMessage(`300`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.243519;0.448698,0.244907;0.448698,0.266667;0.40026,0.266204"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="290" reuse="4" target="_self" title="2910" url="javascript: postMessage(`290`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.266204;0.448698,0.266667;0.448698,0.289352;0.40026,0.288426"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="280" reuse="4" target="_self" title="2810" url="javascript: postMessage(`280`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.288426;0.448698,0.289352;0.448698,0.311111;0.40026,0.311111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="270" reuse="4" target="_self" title="2710" url="javascript: postMessage(`270`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.310648;0.448698,0.311111;0.448698,0.334722;0.40026,0.334259"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="260" reuse="4" target="_self" title="2610" url="javascript: postMessage(`260`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.334259;0.448698,0.334722;0.448698,0.356944;0.40026,0.356481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="250" reuse="4" target="_self" title="2510" url="javascript: postMessage(`250`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.356481;0.448698,0.356944;0.448698,0.37963;0.40026,0.378704"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="240" reuse="4" target="_self" title="2410" url="javascript: postMessage(`240`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.378704;0.448698,0.37963;0.448698,0.401389;0.40026,0.400926"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="230" reuse="4" target="_self" title="2310" url="javascript: postMessage(`230`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.400926;0.448698,0.401389;0.448698,0.424074;0.40026,0.423611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="220" reuse="2" target="_self" title="2210" url="javascript: postMessage(`220`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.423148;0.448698,0.424074;0.448698,0.446759;0.40026,0.446296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="210" reuse="2" target="_self" title="2110" url="javascript: postMessage(`210`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.446296;0.448698,0.446759;0.448698,0.4625;0.40026,0.463426"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="190" reuse="2" target="_self" title="1910" url="javascript: postMessage(`190`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.516204;0.448958,0.516204;0.448958,0.537963;0.40026,0.5375"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="180" reuse="2" target="_self" title="1810" url="javascript: postMessage(`180`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.5375;0.448958,0.537963;0.448958,0.560185;0.40026,0.559722"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="170" reuse="2" target="_self" title="1710" url="javascript: postMessage(`170`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.559722;0.448958,0.560185;0.448958,0.58287;0.40026,0.582407"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="160" reuse="2" target="_self" title="1610" url="javascript: postMessage(`160`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.582407;0.448958,0.58287;0.448958,0.605556;0.40026,0.60463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="150" reuse="2" target="_self" title="1510" url="javascript: postMessage(`150`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.60463;0.448958,0.605556;0.448958,0.628241;0.40026,0.627778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="140" reuse="2" target="_self" title="1410" url="javascript: postMessage(`140`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.627778;0.448958,0.628241;0.448958,0.650926;0.40026,0.649537"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="130" reuse="2" target="_self" title="1310" url="javascript: postMessage(`130`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.649537;0.448958,0.650926;0.448958,0.673148;0.40026,0.671759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="120" reuse="2" target="_self" title="1210" url="javascript: postMessage(`120`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.671759;0.448958,0.673148;0.448958,0.696296;0.40026,0.694444"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="110" reuse="2" target="_self" title="1110" url="javascript: postMessage(`110`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.694444;0.448958,0.696296;0.448958,0.718518;0.40026,0.717593"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="100" reuse="2" target="_self" title="1010" url="javascript: postMessage(`100`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.717593;0.448958,0.718518;0.448958,0.740741;0.40026,0.739352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="90" reuse="2" target="_self" title="910" url="javascript: postMessage(`90`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.739352;0.448958,0.740741;0.448958,0.764352;0.40026,0.7625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="80" reuse="4" target="_self" title="810" url="javascript: postMessage(`80`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.7625;0.448958,0.764352;0.448958,0.785185;0.40026,0.784722"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="70" reuse="4" target="_self" title="710" url="javascript: postMessage(`70`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.784722;0.448958,0.785185;0.448958,0.808333;0.40026,0.807407"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="60" reuse="2" target="_self" title="610" url="javascript: postMessage(`60`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.807407;0.448958,0.808333;0.448958,0.831019;0.40026,0.829167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="50" reuse="4" target="_self" title="510" url="javascript: postMessage(`50`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.829167;0.448958,0.831019;0.448958,0.852778;0.40026,0.852315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="40" reuse="2" target="_self" title="410" url="javascript: postMessage(`40`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.852315;0.448958,0.853241;0.448958,0.875;0.40026,0.874074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="30" reuse="2" target="_self" title="310" url="javascript: postMessage(`30`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.874074;0.448958,0.875;0.448958,0.897222;0.40026,0.897222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="20" reuse="2" target="_self" title="210" url="javascript: postMessage(`20`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.40026,0.897222;0.448958,0.897222;0.448958,0.921296;0.40026,0.92037"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="349" reuse="4" target="_self" title="3509" url="javascript: postMessage(`349`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.10787;0.484115,0.10787;0.484375,0.154167;0.448698,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="339" reuse="4" target="_self" title="3409" url="javascript: postMessage(`339`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.15463;0.484375,0.154167;0.484375,0.176852;0.448698,0.177315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="329" reuse="4" target="_self" title="3309" url="javascript: postMessage(`329`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.177315;0.484375,0.176852;0.484375,0.198611;0.448698,0.2"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="319" reuse="4" target="_self" title="3209" url="javascript: postMessage(`319`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.2;0.484375,0.198611;0.484375,0.221759;0.448698,0.222222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="299" reuse="2" target="_self" title="3009" url="javascript: postMessage(`299`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.244907;0.484375,0.243981;0.484375,0.266204;0.448698,0.266667"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="289" reuse="2" target="_self" title="2909" url="javascript: postMessage(`289`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.266667;0.484375,0.266204;0.484375,0.288889;0.448698,0.289352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="279" reuse="2" target="_self" title="2809" url="javascript: postMessage(`279`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.289352;0.484375,0.288889;0.484375,0.311111;0.448698,0.311111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="259" reuse="2" target="_self" title="2609" url="javascript: postMessage(`259`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.334722;0.484375,0.334259;0.484375,0.356481;0.448698,0.356944"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="249" reuse="4" target="_self" title="2509" url="javascript: postMessage(`249`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.356944;0.484375,0.356481;0.484375,0.379167;0.448698,0.37963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="239" reuse="4" target="_self" title="2409" url="javascript: postMessage(`239`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.37963;0.484375,0.379167;0.484375,0.401389;0.448698,0.401389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="229" reuse="4" target="_self" title="2309" url="javascript: postMessage(`229`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.401389;0.484375,0.401389;0.484375,0.423611;0.448698,0.424074"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="209" reuse="4" target="_self" title="2109" url="javascript: postMessage(`209`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448698,0.446759;0.484375,0.446296;0.484375,0.4625;0.448698,0.4625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="189" reuse="2" target="_self" title="1909" url="javascript: postMessage(`189`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.516204;0.484375,0.516204;0.484375,0.537963;0.448958,0.537963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="169" reuse="0" target="_self" title="1709" url="javascript: postMessage(`169`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.560185;0.484375,0.560648;0.484375,0.583333;0.448958,0.58287"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="159" reuse="4" target="_self" title="1609" url="javascript: postMessage(`159`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.58287;0.484375,0.583333;0.484375,0.605556;0.448958,0.605556"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="149" reuse="4" target="_self" title="1509" url="javascript: postMessage(`149`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.605556;0.484375,0.605556;0.484375,0.628241;0.448958,0.628241"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="139" reuse="4" target="_self" title="1409" url="javascript: postMessage(`139`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.628241;0.484375,0.628241;0.484375,0.650926;0.448958,0.650926"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="119" reuse="2" target="_self" title="1209" url="javascript: postMessage(`119`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.673148;0.484375,0.673148;0.484375,0.69537;0.448958,0.696296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="109" reuse="2" target="_self" title="1109" url="javascript: postMessage(`109`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.696296;0.484375,0.69537;0.484375,0.718056;0.448958,0.718518"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="99" reuse="2" target="_self" title="1009" url="javascript: postMessage(`99`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.718518;0.484375,0.718056;0.484375,0.740278;0.448958,0.741204"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="89" reuse="2" target="_self" title="909" url="javascript: postMessage(`89`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.740741;0.484375,0.740278;0.484375,0.763426;0.448958,0.764352"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="69" reuse="2" target="_self" title="709" url="javascript: postMessage(`69`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.785185;0.484375,0.785185;0.484375,0.80787;0.448958,0.808796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="59" reuse="4" target="_self" title="609" url="javascript: postMessage(`59`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.808333;0.484375,0.80787;0.484375,0.830093;0.448958,0.831019"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="49" reuse="4" target="_self" title="509" url="javascript: postMessage(`49`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.831019;0.484375,0.830093;0.484375,0.852778;0.448958,0.853241"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="39" reuse="0" target="_self" title="409" url="javascript: postMessage(`39`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.853241;0.484375,0.852778;0.484375,0.875463;0.448958,0.875"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="29" reuse="0" target="_self" title="309" url="javascript: postMessage(`29`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.875;0.484375,0.875;0.484375,0.897685;0.448958,0.897222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="19" reuse="4" target="_self" title="209" url="javascript: postMessage(`19`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.448958,0.897222;0.484375,0.897685;0.484375,0.92037;0.448958,0.921296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="348" reuse="0" target="_self" title="3508" url="javascript: postMessage(`348`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.108333;0.525,0.108333;0.525,0.15463;0.489323,0.153704"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="338" reuse="0" target="_self" title="3408" url="javascript: postMessage(`338`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.153704;0.525,0.15463;0.525,0.177778;0.489323,0.176389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="328" reuse="0" target="_self" title="3308" url="javascript: postMessage(`328`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.176389;0.525,0.177778;0.525,0.198148;0.489323,0.197685"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="318" reuse="2" target="_self" title="3208" url="javascript: postMessage(`318`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.197685;0.525,0.198148;0.525,0.221296;0.489323,0.221759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="308" reuse="2" target="_self" title="3108" url="javascript: postMessage(`308`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.221759;0.525,0.221296;0.52526,0.243981;0.489323,0.243519"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="298" reuse="2" target="_self" title="3008" url="javascript: postMessage(`298`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.243519;0.52526,0.243981;0.52526,0.266204;0.489323,0.266204"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="288" reuse="2" target="_self" title="2908" url="javascript: postMessage(`288`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.266204;0.52526,0.266204;0.52526,0.288889;0.489323,0.288889"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="278" reuse="2" target="_self" title="2808" url="javascript: postMessage(`278`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.288889;0.52526,0.288889;0.52526,0.310648;0.489323,0.311111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="268" reuse="2" target="_self" title="2708" url="javascript: postMessage(`268`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.311111;0.52526,0.310648;0.52526,0.333796;0.489323,0.333796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="258" reuse="2" target="_self" title="2608" url="javascript: postMessage(`258`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.333796;0.52526,0.333796;0.52526,0.356481;0.489323,0.356481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="248" reuse="2" target="_self" title="2508" url="javascript: postMessage(`248`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.356481;0.52526,0.356481;0.52526,0.379167;0.489323,0.379167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="238" reuse="2" target="_self" title="2408" url="javascript: postMessage(`238`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.379167;0.52526,0.379167;0.52526,0.401852;0.489323,0.401389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="228" reuse="2" target="_self" title="2308" url="javascript: postMessage(`228`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.401389;0.52526,0.401852;0.52526,0.423148;0.489323,0.423611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="218" reuse="2" target="_self" title="2208" url="javascript: postMessage(`218`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.423148;0.52526,0.423148;0.52526,0.446296;0.489323,0.445833"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="208" reuse="4" target="_self" title="2108" url="javascript: postMessage(`208`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489323,0.445833;0.52526,0.446296;0.52526,0.462963;0.489323,0.4625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="188" reuse="4" target="_self" title="1908" url="javascript: postMessage(`188`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.516204;0.525521,0.515741;0.525521,0.537963;0.489583,0.537963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="178" reuse="4" target="_self" title="1808" url="javascript: postMessage(`178`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.537963;0.525521,0.537963;0.525521,0.560648;0.489583,0.560648"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="168" reuse="4" target="_self" title="1708" url="javascript: postMessage(`168`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.560648;0.525521,0.560648;0.525521,0.58287;0.489583,0.582407"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="158" reuse="0" target="_self" title="1608" url="javascript: postMessage(`158`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.582407;0.525521,0.58287;0.525521,0.605556;0.489583,0.605093"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="148" reuse="2" target="_self" title="1508" url="javascript: postMessage(`148`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.605093;0.525521,0.605556;0.525521,0.628704;0.489583,0.627778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="138" reuse="2" target="_self" title="1408" url="javascript: postMessage(`138`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.627778;0.525521,0.628704;0.525521,0.650463;0.489583,0.65"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="128" reuse="4" target="_self" title="1308" url="javascript: postMessage(`128`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.65;0.525521,0.650463;0.525521,0.673148;0.489583,0.671759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="118" reuse="0" target="_self" title="1208" url="javascript: postMessage(`118`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.671759;0.525521,0.672685;0.525521,0.696296;0.489583,0.694907"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="108" reuse="4" target="_self" title="1108" url="javascript: postMessage(`108`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.694907;0.525521,0.696296;0.525521,0.718518;0.489583,0.717593"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="98" reuse="2" target="_self" title="1008" url="javascript: postMessage(`98`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.717593;0.525521,0.718518;0.525521,0.740278;0.489583,0.740278"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="88" reuse="0" target="_self" title="908" url="javascript: postMessage(`88`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.740278;0.525521,0.740278;0.525521,0.7625;0.489583,0.7625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="78" reuse="4" target="_self" title="808" url="javascript: postMessage(`78`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.7625;0.525521,0.7625;0.525521,0.785185;0.489583,0.784722"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="68" reuse="4" target="_self" title="708" url="javascript: postMessage(`68`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.784722;0.525521,0.785185;0.525781,0.80787;0.489583,0.80787"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="58" reuse="4" target="_self" title="608" url="javascript: postMessage(`58`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.80787;0.525781,0.80787;0.525781,0.82963;0.489583,0.82963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="48" reuse="4" target="_self" title="508" url="javascript: postMessage(`48`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.82963;0.525781,0.82963;0.525781,0.852315;0.489583,0.852315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="38" reuse="4" target="_self" title="408" url="javascript: postMessage(`38`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.852315;0.525781,0.852315;0.525781,0.875;0.489583,0.875"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="28" reuse="4" target="_self" title="308" url="javascript: postMessage(`28`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.875;0.525781,0.875;0.525781,0.897685;0.489583,0.897222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="18" reuse="4" target="_self" title="208" url="javascript: postMessage(`18`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.489583,0.897222;0.525781,0.897685;0.525781,0.919444;0.489583,0.919444"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="347" reuse="2" target="_self" title="3507" url="javascript: postMessage(`347`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525,0.108333;0.560938,0.108333;0.560938,0.15463;0.525,0.15463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="337" reuse="2" target="_self" title="3407" url="javascript: postMessage(`337`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525,0.15463;0.560938,0.15463;0.560938,0.177778;0.525,0.177778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="327" reuse="2" target="_self" title="3307" url="javascript: postMessage(`327`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525,0.177778;0.560938,0.177778;0.560938,0.199074;0.525,0.198148"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="317" reuse="2" target="_self" title="3207" url="javascript: postMessage(`317`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525,0.198148;0.560938,0.199074;0.560938,0.221759;0.525,0.221296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="307" reuse="2" target="_self" title="3107" url="javascript: postMessage(`307`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525,0.221296;0.560938,0.221759;0.560938,0.244444;0.52526,0.243981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="297" reuse="2" target="_self" title="3007" url="javascript: postMessage(`297`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.243981;0.560938,0.244444;0.560938,0.266667;0.52526,0.266204"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="287" reuse="2" target="_self" title="2907" url="javascript: postMessage(`287`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.266204;0.560938,0.266667;0.560938,0.289352;0.52526,0.288889"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="277" reuse="2" target="_self" title="2807" url="javascript: postMessage(`277`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.288889;0.560938,0.289352;0.560938,0.311111;0.52526,0.310648"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="267" reuse="2" target="_self" title="2707" url="javascript: postMessage(`267`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.310648;0.560938,0.311111;0.560938,0.334259;0.52526,0.333796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="257" reuse="2" target="_self" title="2607" url="javascript: postMessage(`257`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.333796;0.560938,0.334259;0.560938,0.356481;0.52526,0.356481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="247" reuse="2" target="_self" title="2507" url="javascript: postMessage(`247`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.356481;0.560938,0.356481;0.560938,0.37963;0.52526,0.379167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="237" reuse="0" target="_self" title="2407" url="javascript: postMessage(`237`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.379167;0.560938,0.37963;0.560938,0.401389;0.52526,0.401852"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="227" reuse="0" target="_self" title="2307" url="javascript: postMessage(`227`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.401852;0.560938,0.401389;0.560938,0.424074;0.52526,0.423148"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="217" reuse="0" target="_self" title="2207" url="javascript: postMessage(`217`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.423148;0.560938,0.424074;0.560938,0.446296;0.52526,0.446759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="207" reuse="2" target="_self" title="2107" url="javascript: postMessage(`207`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.52526,0.446296;0.541927,0.446296;0.560938,0.446296;0.560938,0.4625;0.52526,0.462963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="187" reuse="2" target="_self" title="1907" url="javascript: postMessage(`187`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.515741;0.546094,0.515741;0.560677,0.515741;0.560677,0.537963;0.525521,0.537963;0.525521,0.526389"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="177" reuse="2" target="_self" title="1807" url="javascript: postMessage(`177`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.537963;0.560677,0.537963;0.560677,0.560648;0.525521,0.560648"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="167" reuse="2" target="_self" title="1707" url="javascript: postMessage(`167`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.560648;0.560677,0.560648;0.560677,0.583333;0.525521,0.58287"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="157" reuse="0" target="_self" title="1607" url="javascript: postMessage(`157`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.58287;0.560677,0.583333;0.560677,0.605556;0.525521,0.605556"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="147" reuse="0" target="_self" title="1507" url="javascript: postMessage(`147`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.605556;0.560677,0.605556;0.560677,0.627778;0.525521,0.628704"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="137" reuse="0" target="_self" title="1407" url="javascript: postMessage(`137`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.628704;0.560677,0.627778;0.560677,0.650463;0.525521,0.650463"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="127" reuse="0" target="_self" title="1307" url="javascript: postMessage(`127`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.650463;0.560677,0.650463;0.560677,0.673148;0.525521,0.673148"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="117" reuse="0" target="_self" title="1207" url="javascript: postMessage(`117`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.673148;0.560677,0.673148;0.560677,0.69537;0.525521,0.696296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="107" reuse="0" target="_self" title="1107" url="javascript: postMessage(`107`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.696296;0.560677,0.69537;0.560677,0.71713;0.525521,0.718518"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="97" reuse="0" target="_self" title="1007" url="javascript: postMessage(`97`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.718518;0.560677,0.71713;0.560677,0.740278;0.525521,0.740278"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="87" reuse="0" target="_self" title="907" url="javascript: postMessage(`87`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.740278;0.560677,0.740278;0.560677,0.762037;0.525521,0.7625"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="77" reuse="0" target="_self" title="807" url="javascript: postMessage(`77`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.7625;0.560677,0.762037;0.560677,0.784722;0.525521,0.785185"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="67" reuse="0" target="_self" title="707" url="javascript: postMessage(`67`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525521,0.785185;0.560677,0.784722;0.560677,0.807407;0.525781,0.80787"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="57" reuse="0" target="_self" title="607" url="javascript: postMessage(`57`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525781,0.80787;0.560677,0.807407;0.560677,0.82963;0.525781,0.82963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="47" reuse="2" target="_self" title="507" url="javascript: postMessage(`47`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525781,0.82963;0.560677,0.82963;0.560677,0.852315;0.525781,0.852315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="37" reuse="2" target="_self" title="407" url="javascript: postMessage(`37`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525781,0.852315;0.560677,0.852315;0.560677,0.874537;0.525781,0.875"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="27" reuse="2" target="_self" title="307" url="javascript: postMessage(`27`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525781,0.875;0.560677,0.874537;0.560677,0.897222;0.525781,0.897685"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="17" reuse="0" target="_self" title="207" url="javascript: postMessage(`17`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.525781,0.897685;0.560677,0.897222;0.560677,0.919444;0.525781,0.919444"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="3606" reuse="4" target="_self" title="3606" url="javascript: postMessage(`3606`)"/>';
+			str += '    <polyhotspot description="" id="346" reuse="4" target="_self" title="3506" url="javascript: postMessage(`346`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.108333;0.620052,0.108796;0.620052,0.155556;0.566667,0.155556"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="336" reuse="4" target="_self" title="3406" url="javascript: postMessage(`336`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.155556;0.620052,0.155556;0.620052,0.177778;0.566667,0.177778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="326" reuse="4" target="_self" title="3306" url="javascript: postMessage(`326`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.177778;0.620052,0.177778;0.620052,0.200463;0.566667,0.2"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="316" reuse="4" target="_self" title="3206" url="javascript: postMessage(`316`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.2;0.620052,0.200463;0.620052,0.222685;0.566667,0.222685"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="306" reuse="4" target="_self" title="3106" url="javascript: postMessage(`306`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.222685;0.620052,0.222685;0.620052,0.24537;0.566667,0.244907"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="296" reuse="4" target="_self" title="3006" url="javascript: postMessage(`296`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.244444;0.620052,0.24537;0.620052,0.26713;0.566667,0.266667"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="286" reuse="4" target="_self" title="2906" url="javascript: postMessage(`286`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.266667;0.620052,0.26713;0.620052,0.290278;0.566667,0.289815"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="276" reuse="4" target="_self" title="2806" url="javascript: postMessage(`276`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.289815;0.620052,0.290278;0.620052,0.3125;0.566667,0.311574"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="266" reuse="4" target="_self" title="2706" url="javascript: postMessage(`266`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.311574;0.620052,0.3125;0.620052,0.335185;0.566667,0.333796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="256" reuse="2" target="_self" title="2606" url="javascript: postMessage(`256`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.333796;0.620052,0.335185;0.620052,0.357407;0.59349,0.356944;0.566667,0.356481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="246" reuse="4" target="_self" title="2506" url="javascript: postMessage(`246`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.356481;0.620052,0.357407;0.620052,0.380093;0.566667,0.379167"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="236" reuse="2" target="_self" title="2406" url="javascript: postMessage(`236`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.379167;0.620052,0.380093;0.620052,0.402778;0.566667,0.402315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="226" reuse="4" target="_self" title="2306" url="javascript: postMessage(`226`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.402315;0.620052,0.402778;0.620052,0.424074;0.566667,0.423611"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="216" reuse="4" target="_self" title="2206" url="javascript: postMessage(`216`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.423611;0.620052,0.424074;0.620052,0.447222;0.566667,0.446296"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="206" reuse="4" target="_self" title="2106" url="javascript: postMessage(`206`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566667,0.446296;0.620052,0.447222;0.620052,0.463426;0.566667,0.463889"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="186" reuse="4" target="_self" title="1906" url="javascript: postMessage(`186`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.515741;0.620052,0.515741;0.620052,0.538889;0.566146,0.537963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="176" reuse="4" target="_self" title="1806" url="javascript: postMessage(`176`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.537963;0.620052,0.538889;0.620052,0.562037;0.566146,0.561111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="166" reuse="4" target="_self" title="1706" url="javascript: postMessage(`166`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.561111;0.620052,0.562037;0.620052,0.58287;0.566146,0.583796"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="156" reuse="2" target="_self" title="1606" url="javascript: postMessage(`156`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.583796;0.620052,0.58287;0.620052,0.605556;0.566146,0.606481"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="146" reuse="2" target="_self" title="1506" url="javascript: postMessage(`146`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.606481;0.620052,0.605556;0.620052,0.626852;0.566146,0.627315"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="136" reuse="4" target="_self" title="1406" url="javascript: postMessage(`136`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.627315;0.620052,0.626852;0.620052,0.649074;0.566146,0.65"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="126" reuse="2" target="_self" title="1306" url="javascript: postMessage(`126`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.65;0.620052,0.649074;0.620052,0.671759;0.566146,0.671759"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="116" reuse="2" target="_self" title="1206" url="javascript: postMessage(`116`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.671759;0.620052,0.671759;0.620052,0.694444;0.566146,0.693981"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="106" reuse="2" target="_self" title="1106" url="javascript: postMessage(`106`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.565885,0.693981;0.620052,0.694444;0.620052,0.716204;0.566146,0.716667"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="96" reuse="4" target="_self" title="1006" url="javascript: postMessage(`96`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.716667;0.620052,0.716204;0.620052,0.739352;0.566146,0.738426"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="86" reuse="4" target="_self" title="906" url="javascript: postMessage(`86`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.738426;0.620052,0.739352;0.620052,0.761111;0.566146,0.761111"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="76" reuse="4" target="_self" title="806" url="javascript: postMessage(`76`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.761111;0.620052,0.761111;0.620052,0.783333;0.566146,0.784722"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="66" reuse="4" target="_self" title="706" url="javascript: postMessage(`66`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.784722;0.620052,0.783333;0.620052,0.806481;0.566146,0.806944"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="56" reuse="4" target="_self" title="606" url="javascript: postMessage(`56`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.806944;0.620052,0.806481;0.620052,0.829167;0.566146,0.82963"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="46" reuse="4" target="_self" title="506" url="javascript: postMessage(`46`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.82963;0.620052,0.829167;0.620052,0.851852;0.566146,0.852778"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="36" reuse="4" target="_self" title="406" url="javascript: postMessage(`36`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.853241;0.620052,0.851852;0.620052,0.875;0.566146,0.875"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="26" reuse="4" target="_self" title="306" url="javascript: postMessage(`26`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.875;0.620052,0.875;0.620052,0.896296;0.566146,0.897222"/>';
+			str += '    </polyhotspot>';
+			str += '    <polyhotspot description="" id="16" reuse="4" target="_self" title="206" url="javascript: postMessage(`16`)">';
+			str += '      <polygon column="20" row="0" state="0" vertices="0.566146,0.897222;0.620052,0.896296;0.620052,0.919907;0.566146,0.919907"/>';
+			str += '    </polyhotspot>';
+
+
+
+		str += '  </hotspots>';
+		str += '</vrobject>';
+		str += '';
+		obj.readConfigString(str);
+		var newStr = str;
+
+		for (let i = 0; i < unitsToHide.length; i++) {
+			const currentItr = unitsToHide[i]
+			var currentStr = newStr?.replace(`id="${currentItr}"`, `id="${currentItr}" state="1"`)
+			newStr = currentStr;
+
+		}
+		function extractIdsFromPolyhotspot(xmlString) {
+			const parser = new DOMParser();
+			const xmlDoc = parser.parseFromString(xmlString, "text/xml");
+			const polyhotspots = xmlDoc.getElementsByTagName("polyhotspot");
+			const ids = Array.from(polyhotspots).map(node => node.getAttribute("id"));
+			return ids;
+		}
+
+		// Example usage
+		const polyhotspotIds = extractIdsFromPolyhotspot(str);
+		localStorage.setItem("polygonId", JSON.stringify(polyhotspotIds))
+
+		obj.readConfigString(newStr);
+		// hide the URL bar on the iPhone
+		setTimeout(function () { hideUrlBar(); }, 10);
+	</script>
+	<noscript>
+		<p><b>Please enable Javascript!</b></p>
+	</noscript>
+</body>
+
+</html>
