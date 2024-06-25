@@ -165,7 +165,7 @@
 							return "0x" + hexColor;
 						}
 						let colorIn0xFormat = convertHexTo0xFormat(unit.color_code);
-						obj.changePolyHotspotColor(String(unit.id), colorIn0xFormat, 0.5, colorIn0xFormat, 1);
+						obj.changePolyHotspotColor(String(unit.id), colorIn0xFormat, 0.25, colorIn0xFormat, 1);
 						if (localStorage.getItem("unitsToHide")) {
 							const hiddenUnits = localStorage.getItem("unitsToHide");
 							hideUnits(JSON.parse(hiddenUnits))
@@ -178,6 +178,7 @@
 					hideUnits(units);
 					localStorage.setItem("unitsToHide", JSON.stringify(units))
 				} else if (data.msg === 'clearLocalStorage') {
+					localStorage.removeItem("polygonId"); //Done changes here2
 					localStorage.removeItem("unitsToHide");
 					localStorage.removeItem("navigateTo-Tower2"); //Done changes here1
 
