@@ -259,10 +259,10 @@
 
 			if (navigateTo !== undefined) {
 				setTimeout(() => {
-					obj.addListener('positionchanged', () => {
+					//obj.addListener('positionchanged', () => {
 						// console.log("getx", obj.getX(), "getpan", obj.getPan(), direction)
 						obj.moveTo(navigateTo, tilt, fov, speed, x, y);
-					})
+					//})
 				}, 1);
 			}
 		}
@@ -352,7 +352,7 @@
 		str += '    <level height="540" preload="0" width="960"/>';
 		str += '    <level height="270" preload="1" width="480"/>';
 		str += '  </input>';
-		str += '  <control automovemode="1" contextfullscreen="0" controller="1" dblclickfullscreen="0" hideabout="1" invertwheel="1" lockedkeyboard="0" lockedmouse="0" lockedwheel="0" revx="1" revy="1" sensitivity="10" simulatemass="1" speedwheel="1" swapxy="0" trapwheel="1" wrapx="1" wrapy="0"/>';
+		str += '  <control automovemode="1" contextfullscreen="0" controller="1" dblclickfullscreen="0" hideabout="1" invertwheel="1" lockedkeyboard="0" lockedmouse="0" lockedwheel="0" revx="1" revy="1" sensitivity="10" simulatemass="0" speedwheel="1" swapxy="0" trapwheel="1" wrapx="1" wrapy="0"/>';
 		str += '  <view>';
 		str += '    <start column="43" row="0" state="0"/>';
 		str += '    <zoom centerx="0" centery="0" default="1" maxpixel="2" min="1"/>';
