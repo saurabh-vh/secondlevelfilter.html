@@ -309,20 +309,23 @@
 			isDragging = true;
 		});
 
-		document.addEventListener('touchmove', function (event) {
-			if (isDragging) {
-				const diffX = event.touches[0].clientX - startX;
-				if (Math.abs(diffX) > 1) {
-					if (diffX > 0) {
-						// Right swipe
-						moveToPositionBasedOnX("right");
-					} else {
-						// Left swipe
-						moveToPositionBasedOnX("left");
-					}
-				}
-			}
-		});
+
+// REMOVED TOUCH MOVE EVENT FOR MOBILE TO ACHIVE SNAP EFFECT ON TOUCH END
+		
+		// document.addEventListener('touchmove', function (event) {
+		// 	if (isDragging) {
+		// 		const diffX = event.touches[0].clientX - startX;
+		// 		if (Math.abs(diffX) > 1) {
+		// 			if (diffX > 0) {
+		// 				// Right swipe
+		// 				moveToPositionBasedOnX("right");
+		// 			} else {
+		// 				// Left swipe
+		// 				moveToPositionBasedOnX("left");
+		// 			}
+		// 		}
+		// 	}
+		// });
 
 		document.addEventListener('touchend', function (event) {
 			if (isDragging) {
