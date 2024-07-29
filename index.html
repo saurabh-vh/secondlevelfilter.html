@@ -13,14 +13,25 @@
 	<style type="text/css" title="Default">
 		html {
 			height: 100%;
+			cursor: grab;
+			/* default grab cursor */
+			cursor: -webkit-grab;
+			/* for WebKit browsers */
 		}
-
+	
 		body {
 			height: 100%;
 			margin: 0px;
 			overflow: hidden;
 			/* disable scrollbars */
-			background: #000000;
+			background: black;
+		}
+	
+		html:active {
+			cursor: grabbing;
+			/* change to grabbing when clicked */
+			cursor: -webkit-grabbing;
+			/* for WebKit browsers */
 		}
 	</style>
 
@@ -1288,7 +1299,21 @@
 			const ids = Array.from(polyhotspots).map(node => node.getAttribute("id"));
 			return ids;
 		}
+		document.addEventListener('mousemove', function (e) {
 
+		const tgt = e.target;
+		const inline = tgt.style.cursor || "Not defined"
+		const computed = window.getComputedStyle(tgt)["cursor"]
+		if (computed === "auto") {
+			tgt.style.cursor = "grab";
+			tgt.addEventListener('mousedown', function () {
+				tgt.style.cursor = "grabbing";
+			});
+			tgt.addEventListener('mouseup', function () {
+				tgt.style.cursor = "grab";
+			});
+		}
+	})
 		// Example usage
 		const polyhotspotIds = extractIdsFromPolyhotspot(str);
 		localStorage.setItem("polygonId", JSON.stringify(polyhotspotIds))
